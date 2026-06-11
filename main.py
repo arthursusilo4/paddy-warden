@@ -5,6 +5,7 @@
 import os
 import time
 import numpy as np
+import pandas as pd
 import httpx
 from fastapi import FastAPI, HTTPException, Query
 from contextlib import asynccontextmanager
