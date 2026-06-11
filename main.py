@@ -193,9 +193,19 @@ async def forecast_pest_risk(
         meta = get_feature_meta()
         y_pred = np.clip(scaler_y.inverse_transform(y_pred_scaled), 1, 99)
         
+        # Preprocess full dataframe once to get disease environmental data
+        df_full = _preprocess_full_dataframe(pd.DataFrame(weather_data))
+
         forecasts = []
         for i, pred_date in enumerate(pred_dates):
-            day_data = {"day_number": i + 1, "date": pred_date.isoformat(), "day_name": pred_date.strftime("%A"), "pests": {}}
+            # Get the corresponding row for disease calculation
+            target_row_idx = (i + SEQUENCE_LENGTH) - 1 
+            if target_row_idx < len(df_full):
+                day_diseases = get_disease_risks_for_day(df_full.iloc[target_row_idx])
+            else:
+                day_diseases = {}
+
+            day_data = {"day_number": i + 1, "date": pred_date.isoformat(), "day_name": pred_date.strftime("%A"), "pests": {}, "diseases": day_diseases}
             for j, col in enumerate(meta["target_cols"]):
                 pest_key = col.replace("_risk", "")
                 day_data["pests"][col] = {
