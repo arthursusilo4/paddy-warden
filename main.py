@@ -125,6 +125,11 @@ async def predict_today(location_id: int):
         
         total_time = time.time() - start_time
         
+        # Calculate deterministic diseases from the preprocessed target day
+        df_full = _preprocess_full_dataframe(pd.DataFrame(weather_data))
+        target_day_row = df_full.iloc[-1]
+        disease_risks = get_disease_risks_for_day(target_day_row)
+
         result = {
             "success": True,
             "from_cache": False,
@@ -132,6 +137,7 @@ async def predict_today(location_id: int):
             "prediction_for_date": weather_data[-1]["datetime"].isoformat(),
             "lookback_days": SEQUENCE_LENGTH,
             "predictions": predictions,
+            "diseases": disease_risks,
             "performance_ms": {
                 "weather_fetch": round(fetch_time * 1000, 1),
                 "preprocessing": round(preprocess_time * 1000, 1),
