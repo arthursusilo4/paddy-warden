@@ -360,3 +360,117 @@ def preprocess_forecast_windows(
     A_seq = np.array(A_list, dtype=np.float32)
     
     return X_seq, A_seq, date_list
+
+# ==================== DETERMINISTIC DISEASE RISK ENGINE ====================
+
+DISEASE_META = {
+    "rice_blast": {
+        "common_name": "Rice Blast (Bercak Daun)",
+        "pathogen": "Pyricularia oryzae",
+        # Optimal: Temp 18-28°C, high LWD, high N
+    },
+    "bacterial_leaf_blight": {
+        "common_name": "Bacterial Leaf Blight (Hawar Daun Bakteri)",
+        "pathogen": "Xanthomonas oryzae pv. oryzae",
+        # Optimal: Temp 25-30°C, frequent rain/wind
+    },
+    "sheath_blight": {
+        "common_name": "Sheath Blight (Busuk Batang)",
+        "pathogen": "Rhizoctonia solani",
+        # Optimal: High humidity, high soil moisture, dense canopy
+    },
+    "brown_spot": {
+        "common_name": "Brown Spot (Bercak Coklat)",
+        "pathogen": "Helminthosporium oryzae",
+        # Optimal: Temp 25-28°C, stressed plants (low K, old leaves)
+    },
+    "tungro": {
+        "common_name": "Tungro Virus",
+        "pathogen": "RTBV + RTSV (via Green Leafhopper)",
+        # Optimal: High GLH vector population, vegetative stage
+    }
+}
+
+
+def get_disease_risks_for_day(row: pd.Series) -> dict:
+    """
+    Calculate deterministic disease risk percentages for a single day.
+    Uses environmental favorability indices based on V2 biological thresholds.
+    Returns a dict formatted identically to the LSTM pest outputs.
+    """
+    # Extract base variables (with safe defaults)
+    lwd = row.get("lwd", 0)
+    temp = row.get("temp", 28.0)
+    humidity = row.get("humidity", 80.0)
+    humidity_norm = row.get("humidity_norm", 0.8)
+    rainfall_events_7d = row.get("rainfall_events_7d", 0)
+    soil_moisture = row.get("soil_moisture_pct", 70.0)
+    field_age = row.get("field_age_factor", 0.5)
+    bph_gen = row.get("bph_gen_progress", 0) # Proxy for GLH vector
+    growth_stage = row.get("growth_stage", "fallow")
+    vpd_index = row.get("vpd_index", 0.5)
+    
+    # 1. Rice Blast: Driven by Leaf Wetness + Temperature + N-status
+    temp_suit_blast = max(0, 1 - abs(temp - 23) / 10) # Optimal 23°C
+    lwd_factor = min(lwd / 12, 1.0) # Needs >10-12h wetness
+    blast_daily = temp_suit_blast * 0.4 + lwd_factor * 0.4 + humidity_norm * 0.2
+    # Scale to 0-99 range (Blast rarely hits 99% in 14-day window)
+    blast_risk = round(min(blast_daily * 85, 99), 2)
+    if growth_stage == "fallow": blast_risk = round(blast_risk * 0.1, 2)
+
+    # 2. Bacterial Leaf Blight: Driven by Rain events + Wind/Humidity + Temp
+    temp_suit_blb = max(0, 1 - abs(temp - 27.5) / 8) # Optimal 27.5°C
+    rain_factor = min(rainfall_events_7d / 5, 1.0) # Needs frequent rain to splash bacteria
+    blb_daily = rain_factor * 0.5 + temp_suit_blb * 0.3 + humidity_norm * 0.2
+    blb_risk = round(min(blb_daily * 80, 99), 2)
+    if growth_stage == "fallow": blb_risk = round(blb_risk * 0.1, 2)
+
+    # 3. Sheath Blight: Driven by Soil Moisture + Canopy Humidity
+    soil_factor = min(soil_moisture / 90, 1.0) # Thrives in waterlogged soils
+    shb_daily = soil_factor * 0.4 + humidity_norm * 0.4 + vpd_index * 0.2
+    shb_risk = round(min(shb_daily * 75, 99), 2)
+    if growth_stage == "fallow": shb_risk = round(shb_risk * 0.1, 2)
+
+    # 4. Brown Spot: Driven by Plant Age (stress) + Humidity + Temp
+    temp_suit_bs = max(0, 1 - abs(temp - 26.5) / 8) # Optimal 26.5°C
+    bs_daily = field_age * 0.4 + temp_suit_bs * 0.3 + humidity_norm * 0.3
+    bs_risk = round(min(bs_daily * 70, 99), 2)
+    if growth_stage == "fallow": bs_risk = round(bs_risk * 0.1, 2)
+
+    # 5. Tungro: Driven by Vector (GLH) population + Growth stage
+    # BPH gen progress is our proxy for Green Leafhopper activity
+    vector_suit = min(bph_gen / 100, 1.0) 
+    # Tungro only spreads in early vegetative stage
+    if growth_stage == "vegetative": stage_mult = 1.0
+    elif growth_stage == "reproductive": stage_mult = 0.3
+    else: stage_mult = 0.05
+        
+    tungro_risk = round(min(vector_suit * stage_mult * 90, 99), 2)
+
+    # Format to match pest output exactly
+    risks = {}
+    for key, meta in DISEASE_META.items():
+        val = {
+            "rice_blast": blast_risk,
+            "bacterial_leaf_blight": blb_risk,
+            "sheath_blight": shb_risk,
+            "brown_spot": bs_risk,
+            "tungro": tungro_risk
+        }.get(key, 0.0)
+        
+        risks[key] = {
+            "risk_percentage": val,
+            "risk_level": get_risk_level(val), # Re-use the main.py helper
+            "common_name": meta["common_name"],
+            "scientific_name": meta["pathogen"]
+        }
+        
+    return risks
+
+
+# We need to import the risk level helper here so it's self-contained
+def get_risk_level(risk: float) -> str:
+    if risk >= 70: return "HIGH"
+    elif risk >= 40: return "MODERATE"
+    elif risk >= 20: return "LOW"
+    return "MINIMAL"
