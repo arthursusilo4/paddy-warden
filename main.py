@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 
 from model_utils import load_model_and_scalers, get_model, get_scaler_y, get_feature_meta
 from weather_client import fetch_historical_weather, fetch_merged_weather, LOCATIONS
-from preprocessing import preprocess_weather_to_sequence, preprocess_forecast_windows, SEQUENCE_LENGTH
+from preprocessing import preprocess_weather_to_sequence, preprocess_forecast_windows, SEQUENCE_LENGTH, _preprocess_full_dataframe, get_disease_risks_for_day
 from cache_manager import CacheManager
 
 BASE_PATH = os.environ.get("MODEL_BASE_PATH", "/home/susilovps/pest_prediction_v2")
