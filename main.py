@@ -15,6 +15,8 @@ from weather_client import fetch_historical_weather, fetch_merged_weather, LOCAT
 from preprocessing import preprocess_weather_to_sequence, preprocess_forecast_windows, SEQUENCE_LENGTH, _preprocess_full_dataframe, get_disease_risks_for_day
 from cache_manager import CacheManager
 
+from fastapi.middleware.cors import CORSMiddleware
+
 BASE_PATH = os.environ.get("MODEL_BASE_PATH", "/home/susilovps/pest_prediction_v2")
 CACHE_DIR = os.path.join(BASE_PATH, "cache")
 
@@ -47,6 +49,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "https://grain-warden.vercel.app"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def get_risk_level(risk: float) -> str:
     if risk >= 70: return "HIGH"
@@ -217,6 +229,25 @@ async def forecast_pest_risk(
             forecasts.append(day_data)
             
         total_time = time.time() - start_time
+        
+        def format_weather_for_ui(raw_weather_list):
+            """Convert raw weather to UI-friendly Celsius values."""
+            return [{
+                "date": str(w["datetime"]),
+                "temp": round(w["temp"], 1),
+                "tempmax": round((w["tempmax"] - 32) * 5/9, 1), # F to C
+                "tempmin": round((w["tempmin"] - 32) * 5/9, 1), # F to C
+                "humidity": round(w["humidity"], 0),
+                "precip": round(w["precip"], 1),
+                "windspeed": round(w["windspeed"], 1),
+                "dew": round(w["dew"], 1),
+                "sealevelpressure": round(w["sealevelpressure"], 0),
+                "uvindex": round(w.get("uvindex", 0), 1)
+            } for w in raw_weather_list]
+
+        # Index 13 is "Today" (13 historical days, then forecast starts)
+        ui_weather = format_weather_for_ui(weather_data[13 : 13 + days])
+        # -----------------------------------------------
         
         result = {
             "success": True,
