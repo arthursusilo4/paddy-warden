@@ -1,13 +1,13 @@
 nohup: ignoring input
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1781191053.577787 2370835 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
-I0000 00:00:1781191053.669107 2370835 cpu_feature_guard.cc:227] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+I0000 00:00:1781432248.387721  116383 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+I0000 00:00:1781432248.490142  116383 cpu_feature_guard.cc:227] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
 To enable the following instructions: AVX2 AVX512F FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
 WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
-I0000 00:00:1781191055.955940 2370835 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
-INFO:     Started server process [2370835]
+I0000 00:00:1781432250.936212  116383 cudart_stub.cc:31] Could not find cuda drivers on your machine, GPU will not be used.
+INFO:     Started server process [116383]
 INFO:     Waiting for application startup.
-E0000 00:00:1781191057.312184 2370835 cuda_platform.cc:52] failed call to cuInit: INTERNAL: CUDA error: Failed call to cuInit: UNKNOWN ERROR (303)
+E0000 00:00:1781432252.155743  116383 cuda_platform.cc:52] failed call to cuInit: INTERNAL: CUDA error: Failed call to cuInit: UNKNOWN ERROR (303)
 /home/susilovps/.local/lib/python3.10/site-packages/sklearn/base.py:442: InconsistentVersionWarning: Trying to unpickle estimator MinMaxScaler from version 1.6.1 when using version 1.7.2. This might lead to breaking code or invalid results. Use at your own risk. For more info please refer to:
 https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations
   warnings.warn(
@@ -31,9 +31,4 @@ Loading metadata...
 ============================================================
   Ready: http://0.0.0.0:8000/docs
 ============================================================
-INFO:     127.0.0.1:60352 - "GET /predict/1 HTTP/1.1" 500 Internal Server Error
-/home/susilovps/.local/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
-  warnings.warn(
-/home/susilovps/.local/lib/python3.10/site-packages/sklearn/utils/validation.py:2749: UserWarning: X does not have valid feature names, but MinMaxScaler was fitted with feature names
-  warnings.warn(
-INFO:     127.0.0.1:39728 - "GET /predict/1 HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:46720 - "GET /forecast/1?days=1 HTTP/1.1" 200 OK

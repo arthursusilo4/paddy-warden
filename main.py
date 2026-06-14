@@ -260,6 +260,8 @@ async def forecast_pest_risk(
                 "lookback_per_prediction": SEQUENCE_LENGTH,
             },
             "forecasts": forecasts,
+            "today_weather": ui_weather[0] if ui_weather else None,       # <-- ADD THIS
+            "weather_forecast": ui_weather,
             "performance_ms": {
                 "weather_fetch": round(fetch_time * 1000, 1),
                 "preprocessing": round(preprocess_time * 1000, 1),
